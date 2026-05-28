@@ -56,3 +56,17 @@ Endpoints:
 - **Users** — device identity, savings counter, preferred country/currency
 - **SearchLogs** — AI tags + cropped image URL (B2B data mine)
 - **ClickTrackings** — affiliate clicks, savings, conversion tracking via `AffiliateTrackingId`
+
+## Gemini API key (Task 3)
+
+Never commit API keys. Store locally with user secrets:
+
+```bash
+cd BackEnd/src/StyleAI.Api
+dotnet user-secrets set "Gemini:ApiKey" "YOUR_GEMINI_API_KEY"
+```
+
+Optional request headers for B2B logging:
+
+- `X-Device-Token` — stable anonymous device identity
+- `X-Country-Code` — ISO-2 country code (example: `SA`)

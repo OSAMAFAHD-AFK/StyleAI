@@ -26,22 +26,47 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<AppDbContext>());
 
+        BindOptions(services, configuration);
+
+        services.AddSingleton<ISearchResultStore, InMemorySearchResultStore>();
+        services.AddScoped<IYoloDetectionService, YoloDetectionService>();
+        services.AddScoped<IImageSearchPipelineService, ImageSearchPipelineService>();
+        services.AddScoped<IUserContextService, UserContextService>();
+        services.AddScoped<ISearchLogWriter, SearchLogWriter>();
+        services.AddScoped<ISearchOrchestrationService, SearchOrchestrationService>();
+
+        services.AddHttpClient<IGeminiTagExtractionService, GeminiTagExtractionService>((sp, client) =>
+        {
+            var geminiOptions = sp.GetRequiredService<IOptions<GeminiOptions>>().Value;
+            client.BaseAddress = new Uri(geminiOptions.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(geminiOptions.TimeoutSeconds);
+        });
+
+        return services;
+    }
+
+    private static void BindOptions(IServiceCollection services, IConfiguration configuration)
+    {
         var imageProcessingOptions =
             configuration.GetSection(ImageProcessingOptions.SectionName).Get<ImageProcessingOptions>()
             ?? new ImageProcessingOptions();
         var yoloOptions =
             configuration.GetSection(YoloOptions.SectionName).Get<YoloOptions>()
             ?? new YoloOptions();
+        var geminiOptions =
+            configuration.GetSection(GeminiOptions.SectionName).Get<GeminiOptions>()
+            ?? new GeminiOptions();
+        var userContextOptions =
+            configuration.GetSection(UserContextOptions.SectionName).Get<UserContextOptions>()
+            ?? new UserContextOptions();
 
         services.AddSingleton<IOptions<ImageProcessingOptions>>(
             Microsoft.Extensions.Options.Options.Create(imageProcessingOptions));
         services.AddSingleton<IOptions<YoloOptions>>(
             Microsoft.Extensions.Options.Options.Create(yoloOptions));
-
-        services.AddSingleton<ISearchResultStore, InMemorySearchResultStore>();
-        services.AddScoped<IYoloDetectionService, YoloDetectionService>();
-        services.AddScoped<IImageSearchPipelineService, ImageSearchPipelineService>();
-
-        return services;
+        services.AddSingleton<IOptions<GeminiOptions>>(
+            Microsoft.Extensions.Options.Options.Create(geminiOptions));
+        services.AddSingleton<IOptions<UserContextOptions>>(
+            Microsoft.Extensions.Options.Options.Create(userContextOptions));
     }
 }

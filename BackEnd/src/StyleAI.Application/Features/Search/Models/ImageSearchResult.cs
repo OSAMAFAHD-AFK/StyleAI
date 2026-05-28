@@ -10,5 +10,8 @@ public sealed record ImageSearchResult(
     int ProcessedWidth,
     int ProcessedHeight,
     long ProcessingMilliseconds,
-    string CroppedImageBase64
-);
+    string CroppedImageBase64,
+    GarmentTags? Tags = null,
+    string TagsStatus = TagsStatus.Unavailable,
+    long? SearchLogId = null,
+    string? GeminiModelVersion = null);
