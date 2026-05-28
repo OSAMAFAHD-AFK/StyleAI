@@ -1,0 +1,16 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+
+## EF
+*.db
+*.db-shm
+*.db-wal
+
+## Secrets
+appsettings.*.local.json
+secrets.json
