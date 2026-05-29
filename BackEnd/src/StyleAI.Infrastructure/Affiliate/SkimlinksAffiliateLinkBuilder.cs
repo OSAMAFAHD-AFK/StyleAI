@@ -13,25 +13,46 @@ public sealed class SkimlinksAffiliateLinkBuilder : ISkimlinksAffiliateLinkBuild
         _options = options.Value;
     }
 
-    public string WrapProductUrl(string productUrl)
+    public string WrapProductUrl(string productUrl, Guid? affiliateTrackingId = null)
     {
-        if (_options.PublisherId <= 0 || string.IsNullOrWhiteSpace(productUrl))
+        if (string.IsNullOrWhiteSpace(productUrl))
         {
             return productUrl;
         }
 
+        if (_options.PublisherId <= 0)
+        {
+            return AppendTrackingQuery(productUrl, affiliateTrackingId);
+        }
+
+        string wrappedUrl;
         if (productUrl.Contains("skimresources.com", StringComparison.OrdinalIgnoreCase) ||
             productUrl.Contains("go.redirectingat.com", StringComparison.OrdinalIgnoreCase))
         {
-            return productUrl;
+            wrappedUrl = productUrl;
         }
-
-        if (!Uri.TryCreate(productUrl, UriKind.Absolute, out var uri) ||
-            uri.Scheme is not "http" and not "https")
+        else if (!Uri.TryCreate(productUrl, UriKind.Absolute, out var uri) ||
+                 uri.Scheme is not "http" and not "https")
         {
             return productUrl;
         }
+        else
+        {
+            wrappedUrl =
+                $"https://go.skimresources.com/?id={_options.PublisherId}&url={Uri.EscapeDataString(productUrl)}";
+        }
 
-        return $"https://go.skimresources.com/?id={_options.PublisherId}&url={Uri.EscapeDataString(productUrl)}";
+        return AppendTrackingQuery(wrappedUrl, affiliateTrackingId);
+    }
+
+    private string AppendTrackingQuery(string url, Guid? affiliateTrackingId)
+    {
+        if (affiliateTrackingId is null || string.IsNullOrWhiteSpace(_options.CustomTrackingQueryParameter))
+        {
+            return url;
+        }
+
+        var separator = url.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        return $"{url}{separator}{_options.CustomTrackingQueryParameter}={affiliateTrackingId:D}";
     }
 }

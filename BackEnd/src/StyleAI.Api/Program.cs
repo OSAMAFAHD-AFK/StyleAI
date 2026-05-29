@@ -2,10 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Http.Timeouts;
 using System.Threading.RateLimiting;
-using StyleAI.Api.Hubs;
-using StyleAI.Api.Services;
+using StyleAI.Api.Extensions;
 using StyleAI.Api.Validation;
-using StyleAI.Application.Common.Interfaces;
 using StyleAI.Infrastructure;
 using StyleAI.Infrastructure.Options;
 using StyleAI.Infrastructure.Persistence;
@@ -13,12 +11,11 @@ using StyleAI.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+builder.Services.AddSearchOffersSignalR(builder.Configuration);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<IOfferStreamPublisher, SignalROfferStreamPublisher>();
 builder.Services.AddSingleton<ImageUploadValidator>();
 
 var imageProcessingOptions = builder.Configuration
@@ -27,6 +24,9 @@ var imageProcessingOptions = builder.Configuration
 var affiliateSearchOptions = builder.Configuration
     .GetSection(AffiliateSearchOptions.SectionName)
     .Get<AffiliateSearchOptions>() ?? new AffiliateSearchOptions();
+var monetizationOptions = builder.Configuration
+    .GetSection(MonetizationOptions.SectionName)
+    .Get<MonetizationOptions>() ?? new MonetizationOptions();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -40,6 +40,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddFixedWindowLimiter("offers-limiter", limiter =>
     {
         limiter.PermitLimit = affiliateSearchOptions.OffersRateLimitPerMinute;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+    options.AddFixedWindowLimiter("redirect-limiter", limiter =>
+    {
+        limiter.PermitLimit = monetizationOptions.RedirectRateLimitPerMinute;
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.QueueLimit = 0;
     });
@@ -68,7 +74,7 @@ app.UseRequestTimeouts();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<SearchOffersHub>("/hubs/search-offers");
+app.UseSearchOffersSignalR();
 app.MapHealthChecks("/health");
 app.MapGet("/api/db/ping", async (AppDbContext db, CancellationToken ct) =>
 {

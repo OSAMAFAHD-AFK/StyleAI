@@ -2,5 +2,5 @@ namespace StyleAI.Application.Common.Interfaces;
 
 public interface ISkimlinksAffiliateLinkBuilder
 {
-    string WrapProductUrl(string productUrl);
+    string WrapProductUrl(string productUrl, Guid? affiliateTrackingId = null);
 }

@@ -8,6 +8,11 @@ public interface IOfferResultStore
 
     Task<IReadOnlyList<AffiliateProductOffer>> GetOffersAsync(string requestId, CancellationToken cancellationToken = default);
 
+    Task<AffiliateProductOffer?> GetOfferAsync(
+        string requestId,
+        string offerId,
+        CancellationToken cancellationToken = default);
+
     Task InitializeSessionAsync(
         string requestId,
         long? searchLogId = null,

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using StyleAI.Application.Common.Interfaces;
 using StyleAI.Application.Features.Affiliate.Models;
 using StyleAI.Application.Features.Search.Models;
+using StyleAI.Application.Features.Streaming.Models;
 using StyleAI.Infrastructure.Affiliate;
 using StyleAI.Infrastructure.Options;
 
@@ -105,6 +106,15 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
             var qualityFilter = new OfferQualityFilter();
             var collectedOffers = new List<AffiliateProductOffer>();
             var rollingBenchmarkPrice = 0m;
+            var searchStartedAt = DateTimeOffset.UtcNow;
+
+            await streamPublisher.PublishSearchStartedAsync(
+                new SearchStartedNotification(
+                    query.RequestId,
+                    query.CountryCode,
+                    query.Keywords,
+                    searchStartedAt),
+                cancellationToken);
 
             var publishTask = PublishOffersFromChannelAsync(
                 offerChannel.Reader,
@@ -119,6 +129,8 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
 
             await foreach (var providerResult in fanOut.SearchProvidersAsCompletedAsync(query, cancellationToken))
             {
+                var providerOfferCount = 0;
+
                 if (!providerResult.Success)
                 {
                     failedProviders++;
@@ -127,6 +139,16 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
                         providerResult.Provider,
                         providerResult.FailureReason,
                         query.RequestId);
+
+                    await streamPublisher.PublishProviderSearchCompletedAsync(
+                        new ProviderSearchCompletedNotification(
+                            query.RequestId,
+                            providerResult.Provider,
+                            Success: false,
+                            OfferCount: 0,
+                            DurationMilliseconds: providerResult.DurationMilliseconds,
+                            providerResult.FailureReason),
+                        cancellationToken);
                     continue;
                 }
 
@@ -166,12 +188,22 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
 
                     await offerChannel.Writer.WriteAsync(streamOffer, cancellationToken);
                     publishedCount++;
+                    providerOfferCount++;
 
                     if (useMockStreamDelay)
                     {
                         await Task.Delay(_affiliateSearchOptions.MockStreamDelayMilliseconds, cancellationToken);
                     }
                 }
+
+                await streamPublisher.PublishProviderSearchCompletedAsync(
+                    new ProviderSearchCompletedNotification(
+                        query.RequestId,
+                        providerResult.Provider,
+                        Success: true,
+                        OfferCount: providerOfferCount,
+                        DurationMilliseconds: providerResult.DurationMilliseconds),
+                    cancellationToken);
             }
 
             offerChannel.Writer.TryComplete();
@@ -211,11 +243,12 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
 
             await offerStore.CompleteSessionAsync(query.RequestId, status, failureReason, cancellationToken);
             await streamPublisher.PublishSearchCompletedAsync(
-                query.RequestId,
-                status,
-                publishedCount,
-                summary,
-                failureReason,
+                new SearchCompletedNotification(
+                    query.RequestId,
+                    status,
+                    publishedCount,
+                    summary,
+                    failureReason),
                 cancellationToken);
 
             _logger.LogInformation(
@@ -240,11 +273,12 @@ public sealed class AffiliateOfferSearchOrchestrator : IAffiliateOfferSearchOrch
                 cancellationToken);
 
             await streamPublisher.PublishSearchCompletedAsync(
-                query.RequestId,
-                OffersStatus.Failed,
-                0,
-                null,
-                ex.Message,
+                new SearchCompletedNotification(
+                    query.RequestId,
+                    OffersStatus.Failed,
+                    0,
+                    null,
+                    ex.Message),
                 cancellationToken);
         }
     }

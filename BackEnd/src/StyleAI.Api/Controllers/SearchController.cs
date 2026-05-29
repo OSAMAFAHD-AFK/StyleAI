@@ -147,9 +147,20 @@ public class SearchController : ControllerBase
             countryCode,
             provider = "skimlinks",
             searchLogId = session?.SearchLogId,
-            signalRHub = "/hubs/search-offers",
-            joinGroupMethod = "JoinSearchGroup",
-            events = new[] { "OfferReceived", "SearchCompleted" }
+            streaming = new
+            {
+                hubPath = "/hubs/search-offers",
+                joinGroupMethod = "JoinSearchGroup",
+                leaveGroupMethod = "LeaveSearchGroup",
+                events = new[]
+                {
+                    "SearchStarted",
+                    "OfferReceived",
+                    "ProviderSearchCompleted",
+                    "OffersCatchUp",
+                    "SearchCompleted"
+                }
+            }
         });
     }
 

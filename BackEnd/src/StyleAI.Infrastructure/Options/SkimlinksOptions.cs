@@ -8,6 +8,8 @@ public sealed class SkimlinksOptions
 
     public int PublisherId { get; set; }
 
+    public string CustomTrackingQueryParameter { get; set; } = "xcust";
+
     public string ProductApiBaseUrl { get; set; } = "http://api-product.skimlinks.com/";
 
     public int TimeoutSeconds { get; set; } = 5;

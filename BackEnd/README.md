@@ -116,9 +116,71 @@ Only **one affiliate network** is wired: **Skimlinks** (no ShopStyle/Amazon dire
 - `POST /api/search/upload` — image + Gemini tags
 - `POST /api/search/{requestId}/offers/start` — starts Skimlinks fan-out search
 - `GET /api/search/{requestId}/offers` — ranked results (benchmark, originals, dupes, summary)
-- SignalR hub: `/hubs/search-offers`
-  - call `JoinSearchGroup(requestId)`
-  - events: `OfferReceived` (drip, unchanged), `SearchCompleted` (includes `summary`)
+- SignalR hub: see **Task 5** below
+
+## Task 5 — SignalR live offer streaming
+
+Hub path (configurable): `/hubs/search-offers`
+
+### Flutter / client flow
+
+1. Connect to SignalR hub (WebSockets).
+2. Call `JoinSearchGroup(requestId)` **before or right after** `POST .../offers/start`.
+3. Listen for events (in typical order):
+
+| Event | When |
+|-------|------|
+| `SearchStarted` | Search pipeline began |
+| `OfferReceived` | One normalized offer (drip) |
+| `ProviderSearchCompleted` | One affiliate provider finished (e.g. skimlinks) |
+| `OffersCatchUp` | On join/reconnect — replays offers already collected |
+| `SearchCompleted` | Done — includes `summary` |
+
+4. Optional: `LeaveSearchGroup(requestId)` when leaving the screen.
+
+### CORS (development)
+
+Set `SignalR:CorsOrigins` in `appsettings.Development.json` for your Flutter web origin. Mobile apps usually do not need CORS.
+
+### Architecture
+
+- **Contracts:** `ISearchOffersHubClient` + notification records in `StyleAI.Application`
+
+## Task 6 — Affiliate redirect, thrift counter, webhooks
+
+### Purchase flow (Flutter)
+
+1. User taps **Buy** on an offer.
+2. `POST /api/redirect/prepare` with `{ requestId, offerId }` and header `X-Device-Token`.
+3. Open `redirectUrl` from the response (in-app browser / external).
+4. API records `ClickTrackings`, updates `Users.TotalSavings`, returns savings for UI.
+5. `GET /api/redirect/{affiliateTrackingId}` returns **HTTP 302** to the monetized merchant URL (idempotent).
+
+### Thrift counter
+
+- `GET /api/thrift/summary` + `X-Device-Token` → `totalSavings`, `currency`, click stats.
+
+### Webhooks (conversion confirmation)
+
+- `POST /api/webhooks/affiliate/skimlinks` — Skimlinks postback (body or query `xcust` / `affiliateTrackingId`).
+- `POST /api/webhooks/affiliate/conversion` — generic provider payload.
+- Secure with header `X-Webhook-Secret` (set `Monetization:WebhookSecret`).
+
+```bash
+dotnet user-secrets set "Monetization:WebhookSecret" "YOUR_WEBHOOK_SECRET"
+```
+
+### Architecture (Task 6)
+
+- `AffiliatePurchaseRedirectService` — click logging + Skimlinks URL wrapping + thrift update
+- `ThriftCounterService` — reads `Users.TotalSavings`
+- `AffiliateConversionWebhookService` — marks `ClickTrackings.IsConverted` and commission
+
+### Architecture (Task 5)
+
+- **Publisher:** `SearchOffersSignalRPublisher` (typed hub client)
+- **Catch-up:** `SearchOffersCatchUpService` replays state when client joins late
+- **Pipeline:** `AffiliateOfferSearchOrchestrator` publishes per-offer as they are normalized (no wait for full search)
 
 ### Ranked offers response (`GET .../offers` after completion)
 

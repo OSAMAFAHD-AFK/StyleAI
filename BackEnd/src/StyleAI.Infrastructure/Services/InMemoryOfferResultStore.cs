@@ -39,6 +39,24 @@ public sealed class InMemoryOfferResultStore : IOfferResultStore
         return Task.FromResult<IReadOnlyList<AffiliateProductOffer>>([]);
     }
 
+    public Task<AffiliateProductOffer?> GetOfferAsync(
+        string requestId,
+        string offerId,
+        CancellationToken cancellationToken = default)
+    {
+        if (_sessions.TryGetValue(requestId, out var session) && !IsExpired(session))
+        {
+            lock (session.SyncRoot)
+            {
+                var offer = session.Offers.FirstOrDefault(item =>
+                    string.Equals(item.OfferId, offerId, StringComparison.OrdinalIgnoreCase));
+                return Task.FromResult(offer);
+            }
+        }
+
+        return Task.FromResult<AffiliateProductOffer?>(null);
+    }
+
     public Task<RankedOffersResult?> GetRankedResultAsync(string requestId, CancellationToken cancellationToken = default)
     {
         if (_sessions.TryGetValue(requestId, out var session) && !IsExpired(session))

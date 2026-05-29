@@ -47,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<MerchantNormalizationService>();
         services.AddScoped<IOfferRankingService, OfferRankingService>();
         services.AddScoped<ISkimlinksAffiliateLinkBuilder, SkimlinksAffiliateLinkBuilder>();
+        services.AddScoped<IAffiliatePurchaseRedirectService, AffiliatePurchaseRedirectService>();
+        services.AddScoped<IThriftCounterService, ThriftCounterService>();
+        services.AddScoped<IAffiliateConversionWebhookService, AffiliateConversionWebhookService>();
         services.AddScoped<SkimlinksMockAffiliateClient>();
 
         services.AddHttpClient<SkimlinksAffiliateClient>((sp, client) =>
@@ -112,6 +115,9 @@ public static class DependencyInjection
         var offerRankingOptions =
             configuration.GetSection(OfferRankingOptions.SectionName).Get<OfferRankingOptions>()
             ?? new OfferRankingOptions();
+        var monetizationOptions =
+            configuration.GetSection(MonetizationOptions.SectionName).Get<MonetizationOptions>()
+            ?? new MonetizationOptions();
 
         services.AddSingleton<IOptions<ImageProcessingOptions>>(
             Microsoft.Extensions.Options.Options.Create(imageProcessingOptions));
@@ -129,5 +135,7 @@ public static class DependencyInjection
             Microsoft.Extensions.Options.Options.Create(normalizationOptions));
         services.AddSingleton<IOptions<OfferRankingOptions>>(
             Microsoft.Extensions.Options.Options.Create(offerRankingOptions));
+        services.AddSingleton<IOptions<MonetizationOptions>>(
+            Microsoft.Extensions.Options.Options.Create(monetizationOptions));
     }
 }
