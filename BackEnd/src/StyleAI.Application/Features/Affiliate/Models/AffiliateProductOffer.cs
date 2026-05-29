@@ -1,0 +1,26 @@
+namespace StyleAI.Application.Features.Affiliate.Models;
+
+public sealed record AffiliateProductOffer(
+    string OfferId,
+    string RequestId,
+    string Provider,
+    string Title,
+    string? Description,
+    string MerchantName,
+    string MerchantSlug,
+    string ComparisonTitle,
+    string ProductUrl,
+    string? ImageUrl,
+    decimal Price,
+    string Currency,
+    decimal LocalizedPrice,
+    string LocalizedCurrency,
+    string NormalizedColor,
+    string? NormalizedSize,
+    string SourceCountry,
+    int SequenceNumber,
+    string OfferKind = OfferKinds.Dupe,
+    bool IsBenchmark = false,
+    decimal? SavedAmount = null,
+    decimal? SavingsPercent = null,
+    int DisplayRank = 0);
