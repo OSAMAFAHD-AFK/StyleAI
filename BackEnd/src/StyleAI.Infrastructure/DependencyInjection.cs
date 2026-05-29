@@ -78,6 +78,8 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IEnumerable<IAffiliateProviderClient>>(sp => [sp.GetRequiredService<IAffiliateProviderClient>()]);
+        services.AddScoped<IReadOnlyList<IAffiliateProviderClient>>(sp =>
+            sp.GetRequiredService<IEnumerable<IAffiliateProviderClient>>().ToList());
 
         services.AddHttpClient<IGeminiTagExtractionService, GeminiTagExtractionService>((sp, client) =>
         {
